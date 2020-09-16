@@ -461,13 +461,13 @@ metadata:
 
 ```
 
-- 새버전으로의 배포 시작(V3로 배포)
+- 새버전으로의 배포 시작(V1로 배포)
 ![ZeroDownTime  console - pod change status](https://user-images.githubusercontent.com/54210936/93277970-4c2d1c00-f7fe-11ea-87ce-82cdd77e84ac.jpg)
 
 - siege를 이용한 부하 적용. Availability가 100% 미만으로 떨어짐. 쿠버네티스가 새로 올려진 서비스를 Ready 상태로 인식하여 서비스 유입을 진행 하였음. Readiness Probe 설정하여 조치 필요.
-![ZeroDownTime  SEIGE_STATUS](https://user-images.githubusercontent.com/54210936/93277995-6109af80-f7fe-11ea-9ebf-5de918c150cc.jpg)
+![무중단_100](https://user-images.githubusercontent.com/69958878/93379258-8b0fb000-f898-11ea-98e4-9aeb99049184.png)
 
-- 새버전 배포 확인(V3 적용)
+- 새버전 배포 확인(V1 적용)
 ![ZeroDownTime  console - pod describe](https://user-images.githubusercontent.com/54210936/93278015-6d8e0800-f7fe-11ea-82d1-dc80b96b601c.jpg)
 
 
