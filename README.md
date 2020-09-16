@@ -464,7 +464,7 @@ metadata:
 - 새버전으로의 배포 시작(V1로 배포) kubectl set image deployment/point -n teamc point=271153858532.dkr.ecr.ap-northeast-1.amazonaws.com/admin15-point:v1
 
 - siege를 이용한 부하 적용. Readiness Probe 설정을 통한 ZeroDownTime 구현
-![무중단_100](https://user-images.githubusercontent.com/69958878/93379258-8b0fb000-f898-11ea-98e4-9aeb99049184.png)
+![무중단_100~](https://user-images.githubusercontent.com/69958878/93382005-70d7d100-f89c-11ea-928a-d64aecc92eea.png)
 
 - Readiness Probe 설정을 통한 ZeroDownTime 설정.
 ```
