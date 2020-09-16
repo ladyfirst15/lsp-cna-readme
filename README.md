@@ -1,4 +1,4 @@
-# Intensive Lv2. TeamC
+# Intensive Lv2. 이상평
 
 음식을 주문하고 요리하여 배달하는 현황을 확인 할 수 있는 CNA의 개발
 
@@ -23,15 +23,17 @@
 
 # 서비스 시나리오
 
-음식을 주문하고, 요리현황 및 배달현황을 조회
+음식을 주문하고, 요리현황 및 배달현황, 쿠폰발행 현황 을 조회
 
 ## 기능적 요구사항
 
 1. 고객이 주문을 하면 주문정보를 바탕으로 요리가 시작된다.
+1. 고객이 주문을 하면 신규쿠폰이 발행된다.
 1. 요리가 완료되면 배달이 시작된다. 
 1. 고객이 주문취소를 하게 되면 요리가 취소된다.
+1. 고객이 주문취소를 하게 되면 쿠폰발행도 취소된다.
 1. 고객 주문에 재고가 없을 경우 주문이 취소된다. 
-1. 고객은 Mypage를 통해, 주문과 요리, 배달의 전체 상황을 조회할수 있다.
+1. 고객은 Mypage를 통해, 주문과 요리, 배달 그리고 쿠폰발행의 전체 상황을 조회할수 있다.
 
 ## 비기능적 요구사항
 1. 장애격리
@@ -46,8 +48,8 @@
 # 분석/설계
 
 ## Event Storming 결과
-* MSAEz 로 모델링한 이벤트스토밍 결과 : http://www.msaez.io/#/storming/t5Z5EXdDP0UOZDvGzeNH61hF8qG3/mine/52e31337a76ddeacc1d288ea11e24158/-MH4jm58lJNE_9tgT82F
-![EventStorming_Restaurant](https://user-images.githubusercontent.com/54210936/93179266-66201d80-f770-11ea-9530-aae4dfef7e4d.png)
+* MSAEz 로 모델링한 이벤트스토밍 결과 : http://labs.msaez.io/#/storming/ecU7zzeUBxdYwUDu64Yfh34lznp2/mine/ac871e565e4b8d2e4dbe3a770cc8bbea/-MHAwa2m7jURuMoDzgD4
+![eventStorming](https://user-images.githubusercontent.com/69958878/93348727-8e437580-f871-11ea-9658-d9cddd14f91c.png)
 
 ### 이벤트 도출
 1. 주문됨
@@ -55,11 +57,13 @@
 1. 요리재고체크됨
 1. 요리완료
 1. 배달
+1. 쿠폰발행됨
+1. 쿠폰발행취소됨
 
 
 ### 어그리게잇으로 묶기
 
-  * 고객의 주문(Order), 식당의 요리(Cook), 배달(Delivery)은 그와 연결된 command와 event 들에 의하여 트랙잭션이 유지되어야 하는 단위로 묶어 줌.
+  * 고객의 주문(Order), 식당의 요리(Cook), 배달(Delivery), 쿠폰(Coupon) 은 그와 연결된 command와 event 들에 의하여 트랙잭션이 유지되어야 하는 단위로 묶어 줌.
 
 ### Policy 부착 
 
@@ -75,6 +79,8 @@
  * 주문이 취소되면, 요리취소 내용을 고객에게 전달한다.(ok)
  * 고객이 주문 시 재고량을 체크한다.(ok)
  * 재고가 없을 경우 주문이 취소된다.(ok)
+ * 고객이 주문 시 신규 쿠폰이 발행된다.
+ * 고객이 주문 취소시 신규 쿠폰이 취소된다.
  * 고객은 Mypage를 통해, 주문과 요리, 배달의 전체 상황을 조회할수 있다.(ok)
 
 </br>
@@ -93,24 +99,23 @@
 
 ```
 package myProject_LSP;
-
-import javax.persistence.*;
 import org.springframework.beans.BeanUtils;
-import java.util.List;
+import javax.persistence.*;
 
 @Entity
-@Table(name="Order_table")
-public class Order {
+@Table(name="Coupon_table")
+public class Coupon {
 
+
+    private static int couponQty=10;
+    private boolean couponFlowChk=true;
     @Id
     @GeneratedValue(strategy=GenerationType.AUTO)
     private Long id;
-    private Integer restaurantId;
-    private Integer restaurantMenuId;
-    private Integer customerId;
-    private Integer qty;
-    private Long modifiedDate;
+    private Long orderId;
     private String status;
+    private Long sendDate;
+    private String couponKind;
     
     ....
 }
@@ -119,28 +124,38 @@ public class Order {
 ```
 package myProject_LSP;
 import org.springframework.data.repository.PagingAndSortingRepository;
-public interface OrderRepository extends PagingAndSortingRepository<Order, Long>{
+import java.util.Optional;
 
+public interface CouponRepository extends PagingAndSortingRepository<Coupon, Long>{
+    Optional<Coupon> findByOrderId(Long orderId);
 }
 ```
 </br>
 
-## 동기식 호출과 Fallback 처리
+## 동기식 호출
 
 분석단계에서의 조건 중 하나로 주문->취소 간의 호출은 트랜잭션으로 처리. 호출 프로토콜은 Rest Repository의 REST 서비스를 FeignClient 를 이용하여 호출.
-- 요리(cook) 서비스를 호출하기 위하여 Stub과 (FeignClient) 를 이용하여 Service 대행 인터페이스 (Proxy) 를 구현 
+- 쿠폰(Coupon) 서비스를 호출하기 위하여 Stub과 (FeignClient) 를 이용하여 Service 대행 인터페이스 (Proxy) 를 구현 
 
 ```
-@FeignClient(name="cook", url="${api.url.cook}")
-public interface CancellationService {
 
-  @RequestMapping(method= RequestMethod.GET, path="/cancellations")
-  public void cancel(@RequestBody Cancellation cancellation);
+package myProject_LSP.external;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+
+@FeignClient(name="coupon", url="${api.url.coupon}")
+public interface CouponService {
+
+    @RequestMapping(method= RequestMethod.POST, path="/coupons")
+    public void couponSend(@RequestBody Coupon coupon);
 
 }
 ```
 
-- 주문이 취소 될 경우 Cancellation 현황에 취소 내역을 접수한다.
+- 주문이 접수 될 경우 Coupon 현황에 신규발행 내역을 접수한다.
 ```
 @PrePersist
 public void onPrePersist(){
@@ -148,70 +163,95 @@ public void onPrePersist(){
    BeanUtils.copyProperties(this, cookCancelled);
    cookCancelled.setStatus("COOK : ORDER CANCELED");
    cookCancelled.publishAfterCommit();
+@PostPersist
+public void onPostPersist(){
+   if("COUPON : COUPON SENDED".equals(this.getStatus())){
+      //ORDER -> COUPON SEND 경우
+      CouponSended couponSended = new CouponSended()
+      BeanUtils.copyProperties(this, couponSended);
+      couponSended.publishAfterCommit();
+    }
+}
 ```
+- COUPON 서비스에서 정상적으로 COUPON이 발행되고 STATUS도 'COUPON SENDED'로 접수된다.
+
+![coupon](https://user-images.githubusercontent.com/69958878/93352458-d4023d00-f875-11ea-9f79-b54867858aa9.png)
 
 </br>
 
 ## 비동기식 호출과 Saga Pattern
 
-주문 접수 및 배달 접수, 재고부족으로 인한 주문 취소는 비동기식으로 처리하여 시스템 상황에 따라 접수 및 취소가 블로킹 되지 않도록 처리 한다. 
-요리 단계 접수시에는 재고를 체크하고 재고가 부족할 경우 주문단계로 비동기식 요리 불가 발행(publish). 
+비동기식 호출 : 신규쿠폰 발행, 신규쿠폰 취소는 비동기식으로 처리하여 시스템 상황에 따라 발행 및 취소가 블로킹 되지 않도록 처리 한다. 
+Saga Patter : 
+1. 고객이 음식 주문을 접수하게 되면, Coupon에 신규발행이 접수된다.
+1. Coupon이 신규발행이 완료되면, Coupon서비스에서 Order서비스에 Coupon 상태를 전송한다.
+1. Order서비스는 Coupon 상태를 업데이트한다. (Order 서비스에서 Coupon 성공 인지)
+
  
 ```
-# 주문시 재고량 체크하는 Cook 로직
-@Entity
-@Table(name="Cook_table")
-public class Cook {
-    private boolean flowchk = true;
-    ....
-    @PostPersist
-    public void onPostPersist(){
-        if(flowchk) {   // 요리를 할 수 있는 재고가 있을 때 요리를 시작한다
-            Cooked cooked = new Cooked();
-            BeanUtils.copyProperties(this, cooked);
-            this.setStatus("COOK : ORDER RECEIPT");
-            this.qty--;
-            cooked.publishAfterCommit();
-        }else{
-            CookQtyChecked cookQtyChecked = new CookQtyChecked();
-            BeanUtils.copyProperties(this, cookQtyChecked);
-            cookQtyChecked.publishAfterCommit();
-        }
-    }
+# 고객이 음식 주문 시, Coupon에 신규발행 호출 (REST API)
+@PostPersist
+  public void onPostPersist(){
+      Ordered ordered = new Ordered();
+      BeanUtils.copyProperties(this, ordered);
+      if(!"ORDER : COOK CANCELED".equals(ordered.getStatus())){
+          ordered.publishAfterCommit();
+          /*수정*/
+          myProject_LSP.external.Coupon coupon = new myProject_LSP.external.Coupon();
+          coupon.setOrderId(this.getId());
+          coupon.setStatus("ORDER : COUPON SEND");
+          OrderApplication.applicationContext.getBean(myProject_LSP.external.CouponService.class).couponSend(coupon);
+      }
 
-    @PrePersist
-    public void onPrePersist(){
-        // 요리를 할 수 있는 재고가 없을 때 요리를 시작한다
-        if(this.getQty() <= 0) {
-            this.setStatus("COOK : QTY OVER");
-            flowchk = false;
-        }
-    }
-}
+  }
+```
+- 주문 정상 접수
+![orderPost](https://user-images.githubusercontent.com/69958878/93352415-c5b42100-f875-11ea-835d-35fddb0594fb.png) 
 
-...
-# 주문서비스의 Cancel 설정
-    @Autowired
-    OrderRepository orderRepository;
 
-    @StreamListener(KafkaProcessor.INPUT)
-    public void wheneverCookQtyChecked_CookCancelUpdate(@Payload CookQtyChecked cookQtyChecked){
-        if(cookQtyChecked.isMe()){
-            Optional<Order> orderOptional = orderRepository.findById(cookQtyChecked.getOrderId());
-            Order order = orderOptional.get();
-            order.setStatus("ORDER : QTY OVER CANCELED");
-            orderRepository.save(order);
-        }
-    }
+- 쿠폰 정상 발행
+![coupon](https://user-images.githubusercontent.com/69958878/93352458-d4023d00-f875-11ea-9f79-b54867858aa9.png)  
+
+
+```
+# Coupon이 신규발행이 완료되면 Order 서비스에 Coupon 완료 정보 전송 (PUB/SUB)
+ @PostPersist
+  public void onPostPersist(){
+      if("COUPON : COUPON SENDED".equals(this.getStatus())){
+          //ORDER -> COUPON SEND 경우
+          CouponSended couponSended = new CouponSended();
+          BeanUtils.copyProperties(this, couponSended);
+          couponSended.publishAfterCommit();
+      }
+  }
+  
 ```
 
-</br>
+```
+# 주문서비스의 쿠폰상태 설정 (PUB/SUB)
+  @StreamListener(KafkaProcessor.INPUT)
+  public void wheneverCouponSended_CouponInfoUpdate(@Payload CouponSended couponSended){
+
+      if(couponSended.isMe()){
+          System.out.println("##### listener CouponInfoUpdate : " + couponSended.toJson());
+          Optional<Order> orderOptional = orderRepository.findById(couponSended.getOrderId());
+          Order order = orderOptional.get();
+          if("COUPON : COUPON SENDED".equals(couponSended.getStatus())){
+              order.setCouponStatus("ORDER : COUPON SENDED SUCCESS");
+          }
+          orderRepository.save(order);
+      }
+  }
+```
+- ORDER 서비스에서 쿠폰 상태 업데이트 확인 (ORDER 서비스에 쿠폰상태가 필요 없지만, SAGA 패턴 확인을 위함)
+![orderPostResut](https://user-images.githubusercontent.com/69958878/93352443-cf3d8900-f875-11ea-9079-3ebce9c415d3.png)
+
 
 ## Gateway
 하나의 접점으로 서비스를 관리할 수 있는 Gateway를 통한 서비스라우팅을 적용 한다. Loadbalancer를 이용한 각 서비스의 접근을 확인 함.
 
 ```
-# Gateway 설정(https://github.com/dew0327/final-cna-gateway/blob/master/target/classes/application.yml)
+# Gateway 설정(https://github.com/ladyfirst15/lsp-cna-gateway/blob/master/target/classes/application.yml)
 spring:
   profiles: docker
   cloud:
@@ -233,6 +273,10 @@ spring:
           uri: http://mypage:8080
           predicates:
             - Path= /mypages/**
+        - id: coupon
+          uri: http://coupon:8080
+          predicates:
+            - Path= /couponS/**
       globalcors:
         corsConfigurations:
           '[/**]':
@@ -247,13 +291,14 @@ spring:
 server:
   port: 8080
 ```
-![gateway_LoadBalancer (1)](https://user-images.githubusercontent.com/54210936/93281154-7aaef500-f806-11ea-997d-c70dc6a81056.png)
-![gateway_LoadBalancer_delivery (1)](https://user-images.githubusercontent.com/54210936/93281029-1e4bd580-f806-11ea-9b95-70b9985b6fde.png)
+![gateway](https://user-images.githubusercontent.com/69958878/93355435-07929680-f879-11ea-8b9f-8844fb57565e.png)
+![gateway-w](https://user-images.githubusercontent.com/69958878/93355443-095c5a00-f879-11ea-97b5-c98ebd046bcc.png)
 
 </br>
 
 ## CQRS
-기존 코드에 영향도 없이 mypage 용 materialized view 구성한다. 고객은 주문 접수, 요리 상태, 배송현황 등을 한개의 페이지에서 확인 할 수 있게 됨.</br>
+기존 코드에 영향도 없이 mypage 용 materialized view 구성한다. 고객은 주문 접수, 요리 상태, 배송현황, 쿠폰발행 등을 한개의 페이지에서 확인 할 수 있게 됨.</br>
+
 ```
 # 주문 내역 mypage에 insert
    @StreamListener(KafkaProcessor.INPUT)
@@ -276,18 +321,21 @@ server:
             e.printStackTrace();
         }
     }
-
-# 요리내역(Cook) mypage 업데이트
+```
+```
+# 쿠폰발행 발행(CouponSend) mypage 업데이트
     @StreamListener(KafkaProcessor.INPUT)
-    public void whenCooked_then_UPDATE_1(@Payload Cooked cooked) {
+    public void whenCouponSended_then_UPDATE_6(@Payload CouponSended couponSended) {
         try {
-            if (cooked.isMe()) {
+            if (couponSended.isMe()) {
                 // view 객체 조회
-                List<Mypage> mypageList = mypageRepository.findByOrderId(cooked.getOrderId());
+                List<Mypage> mypageList = mypageRepository.findByOrderId(couponSended.getOrderId());
                 for(Mypage mypage : mypageList){
                     // view 객체에 이벤트의 eventDirectValue 를 set 함
-                    mypage.setCookId(cooked.getId());
-                    mypage.setCookStatus(cooked.getStatus());
+                    mypage.setCouponId(couponSended.getId());
+                    mypage.setCouponStatus(couponSended.getStatus());
+                    mypage.setCouponSendDate(couponSended.getSendDate());
+                    mypage.setCouponKind(couponSended.getCouponKind());
                     // view 레파지 토리에 save
                     mypageRepository.save(mypage);
                 }
@@ -296,7 +344,36 @@ server:
             e.printStackTrace();
         }
     }
+```
+- mypage에 COUPON 발행상태 업데이트 확인
+![mypages](https://user-images.githubusercontent.com/69958878/93352476-d95f8780-f875-11ea-8e55-b7aadcac59a1.png)
+
+```
+# 쿠폰발행 발행취소(CouponSendCancel) mypage 업데이트
+    @StreamListener(KafkaProcessor.INPUT)
+    public void whenCouponSendCancelled_then_UPDATE_7(@Payload CouponSendCancelled couponSendCancelled) {
+        try {
+            if (couponSendCancelled.isMe()) {
+                // view 객체 조회
+                List<Mypage> mypageList = mypageRepository.findByOrderId(couponSendCancelled.getOrderId());
+                for(Mypage mypage : mypageList){
+                    // view 객체에 이벤트의 eventDirectValue 를 set 함
+                    mypage.setCouponId(couponSendCancelled.getId());
+                    mypage.setCouponStatus(couponSendCancelled.getStatus());
+                    mypage.setCouponSendDate(couponSendCancelled.getSendDate());
+                    mypage.setCouponKind(couponSendCancelled.getCouponKind());
+                    // view 레파지 토리에 save
+                    mypageRepository.save(mypage);
+                }
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+
  ```
+ - mypage에 COUPON 회수(삭제)상태 업데이트 확인
+![mypages_cancel](https://user-images.githubusercontent.com/69958878/93354138-a6b68e80-f877-11ea-87e0-656dc1f5bc9c.png)
 ![cqrs](https://user-images.githubusercontent.com/54210936/93281210-987c5a00-f806-11ea-835b-2cea09bf6466.png)
 
 </br>
@@ -311,11 +388,13 @@ server:
   * Github에 Codebuild를 위한 yml 파일을 업로드하고, codebuild와 연동 함
   * 각 마이크로서비스의 build 스펙
   ```
-    https://github.com/dew0327/final-cna-order/blob/master/buildspec.yml
-    https://github.com/dew0327/final-cna-cook/blob/master/buildspec.yml
-    https://github.com/dew0327/final-cna-delivery/blob/master/buildspec.yml
-    https://github.com/dew0327/final-cna-gateway/blob/master/buildspec.yml
-    https://github.com/dew0327/final-cna-mypage/blob/master/buildspec.yml
+    https://github.com/ladyfirst15/lsp-cna-order/blob/master/buildspec.yml
+    https://github.com/ladyfirst15/lsp-cna-cook/blob/master/buildspec.yml
+    https://github.com/ladyfirst15/lsp-cna-delivery/blob/master/buildspec.yml
+    https://github.com/ladyfirst15/lsp-cna-gateway/blob/master/buildspec.yml
+    https://github.com/ladyfirst15/lsp-cna-mypage/blob/master/buildspec.yml
+    https://github.com/ladyfirst15/lsp-cna-coupon/blob/master/buildspec.yml
+
   ```
   
 </br>
@@ -325,7 +404,7 @@ server:
 * 서킷 브레이킹 :
 주문이 과도할 경우 CB 를 통하여 장애격리. 500 에러가 5번 발생하면 10분간 CB 처리하여 100% 접속 차단
 ```
-# AWS codebuild에 설정(https://github.com/dew0327/final-cna-order/blob/master/buildspec.yml)
+# AWS codebuild에 설정(https://github.com/ladyfirst15/lsp-cna-coupon/blob/master/buildspec.yml)
  http:
    http1MaxPendingRequests: 1   # 연결을 기다리는 request 수를 1개로 제한 (Default 
    maxRequestsPerConnection: 1  # keep alive 기능 disable
@@ -337,27 +416,31 @@ server:
 ```
 
 * 오토스케일(HPA) :
-CPU사용률 10% 초과 시 replica를 5개까지 확장해준다. 상용에서는 70%로 세팅하지만 여기에서는 기능적용 확인을 위해 수치를 조절.
+CPU사용률 10% 초과 시 replica를 3개까지 확장해준다. 상용에서는 70%로 세팅하지만 여기에서는 기능적용 확인을 위해 수치를 조절.
 ```
 apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
 metadata:
-  name: skcchpa-order
+  name: skcchpa-coupon
   namespace: teamc
   spec:
     scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
     name: $_PROJECT_NAME                # order (주문) 서비스 HPA 설정
-    minReplicas: 3                      # 최소 3개
-    maxReplicas: 5                      # 최대 5개
+    minReplicas: 1                      # 최소 1개
+    maxReplicas: 3                      # 최대 3개
     targetCPUUtilizationPercentage: 10  # cpu사용율 10프로 초과 시 
 ```    
 * 부하테스트(Siege)를 활용한 부하 적용 후 서킷브레이킹 / 오토스케일 내역을 확인한다.
-![HPA, Circuit Breaker  SEIGE_STATUS](https://user-images.githubusercontent.com/54210936/93168766-9ced3800-f75e-11ea-9d6b-fdf37591b97a.jpg)
-![HPA  TOBE_STATUS](https://user-images.githubusercontent.com/54210936/93167897-95c52a80-f75c-11ea-8f0e-51a94332141b.jpg)
+1. 부하테스트 전, minReplicas=1로 1개의 pod만이 떠있는 것을 확인
+![auto_1](https://user-images.githubusercontent.com/69958878/93374959-6d3f4c80-f892-11ea-8d55-88f169967738.png)
+2. 부하테스트하여, 오토스케일링 된 pod 내역 확인
+![503](https://user-images.githubusercontent.com/69958878/93374920-5dc00380-f892-11ea-9a46-e32c9a464361.jpg)
+![auto_result](https://user-images.githubusercontent.com/69958878/93374971-716b6a00-f892-11ea-937d-eb1c72b586a4.png)
 
-</br>
+
+
 
 ## 무정지 배포
 
@@ -366,9 +449,9 @@ metadata:
   
 
 ```
-# AWS codebuild에 설정(https://github.com/dew0327/final-cna-cook/blob/master/buildspec.yml)
+# AWS codebuild에 설정(https://github.com/ladyfirst15/final-cna-coupon/blob/master/buildspec.yml)
   spec:
-    replicas: 5
+    replicas: 3
     minReadySeconds: 10   # 최소 대기 시간 10초
     strategy:
       type: RollingUpdate
@@ -402,33 +485,35 @@ metadata:
 </br>
 
 ## 마이크로서비스 로깅 관리를 위한 PVC 설정
-AWS의 EFS에 파일시스템을 생성(EFS-teamc (fs-96929df7))하고 서브넷과 클러스터(TeamC-final)를 연결하고 PVC를 설정해준다. 각 마이크로 서비스의 로그파일이 EFS에 정상적으로 생성되고 기록됨을 확인 함.
+AWS의 EFS에 파일시스템을 생성(EFS-teamc (fs-28564909))하고 서브넷과 클러스터(TeamC-final)를 연결하고 PVC를 설정해준다. 각 마이크로 서비스의 로그파일이 EFS에 정상적으로 생성되고 기록됨을 확인 함.
 ```
-#AWS의 각 codebuild에 설정(https://github.com/dew0327/final-cna-order/blob/master/buildspec.yml)
+#AWS의 각 codebuild에 설정(https://github.com/ladyfirst15/lsp-cna-coupon/blob/master/buildspec.yml)
 volumeMounts:  
-- mountPath: "/mnt/aws"    # ORDER서비스 로그파일 생성 경로
+- mountPath: "/mnt/aws"    # COUPON 서비스 로그파일 생성 경로
   name: volume                 
 volumes:                                # 로그 파일 생성을 위한 EFS, PVC 설정 정보
 - name: volume
   persistentVolumeClaim:
   claimName: aws-efs  
 ```
-![PVC  console - log file test](https://user-images.githubusercontent.com/54210936/93280070-bc8a6c00-f803-11ea-8c0e-ab82c729dfd6.jpg)
-
+![pvc](https://user-images.githubusercontent.com/69958878/93348772-9c919180-f871-11ea-8a1a-f8ae375437a4.png)
 </br>
 
 ## SelfHealing
 운영 안정성의 확보를 위해 마이크로서비스가 아웃된 뒤에 다시 프로세스가 올라오는 환경을 구축한다. 프로세스가 죽었을 때 다시 기동됨을 확인함.
 ```
-#AWS의 각 codebuild에 설정(https://github.com/dew0327/final-cna-order/blob/master/buildspec.yml)
+#AWS의 각 codebuild에 설정(https://github.com/ladyfirst15/lsp-cna-coupon/blob/master/buildspec.yml)
 livenessProbe:
-  tcpSocket:
-  port: 8080
-  initialDelaySeconds: 20     # 서비스 어플 기동 후 20초 뒤 시작
-  periodSeconds: 3            # 3초 주기로 livenesProbe 실행 
+  exec:
+    command:
+    - cat
+    - /mnt/aws/logs/coupon-application.log
+  initialDelaySeconds: 20      # 서비스 어플 기동 후 20초 뒤 시작
+  periodSeconds: 30            # 30초 주기로 livenesProbe 실행 
 ```
-![Self-healing  console test](https://user-images.githubusercontent.com/54210936/93280338-5b16cd00-f804-11ea-9687-2d9f8cac9ff1.jpg)
-
+- /mnt/aws/logs/coupon-application.log 가 삭제 될 때, coupon 프로세스가 kill된 후에, 자동으로 SelfHealing되는 과정 확인
+![liveness_delete](https://user-images.githubusercontent.com/69958878/93369584-89d78680-f88a-11ea-8d04-d8b189abe407.png)
+![liveness](https://user-images.githubusercontent.com/69958878/93369578-880dc300-f88a-11ea-93b3-0df5822e973e.png)
 </br>
 </br>
 
@@ -436,9 +521,9 @@ livenessProbe:
 
 # 첨부
 팀프로젝트 구성을 위해 사용한 계정 정보 및 클러스터 명, Github 주소 등의 내용 공유 
-* AWS 계정 명 : TeamC
+* AWS 계정 명 : admin14
 ```
-Region : ap-northeast2
+Region : ap-northeast-1
 EFS : EFS-teamc (fs-96929df7)
 EKS : TeamC-final
 ECR : order / delivery / cook / mypage / gateway
@@ -446,9 +531,9 @@ Codebuild : order / delivery / cook / mypage / gateway
 ```
 * Github :</br>
 ```
-https://github.com/dew0327/final-cna-gateway
-https://github.com/dew0327/final-cna-order
-https://github.com/dew0327/final-cna-delivery
-https://github.com/dew0327/final-cna-cook
-https://github.com/dew0327/final-cna-mypage
+https://github.com/ladyfirst15/lsp-cna-gateway
+https://github.com/ladyfirst15/lsp-cna-order
+https://github.com/ladyfirst15/lsp-cna-delivery
+https://github.com/ladyfirst15/lsp-cna-cook
+https://github.com/ladyfirst15/lsp-cna-mypage
 ```
