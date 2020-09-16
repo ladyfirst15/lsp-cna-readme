@@ -474,7 +474,13 @@ metadata:
       initialDelaySeconds: 15      # 서비스 어플 기동 후 15 뒤 시작
       periodSeconds: 20            # 20초 주기로 readinessProbe 실행 
 ```
+
+- 신규 pod 생성되고 있음을 확인
+![new_pod](https://user-images.githubusercontent.com/69958878/93381249-5c470900-f89b-11ea-904e-a715c1b0368a.png)
+
+
 - 새버전 배포 확인(V1 적용)
+![new_result](https://user-images.githubusercontent.com/69958878/93381253-5e10cc80-f89b-11ea-8895-c703a2f9a4f9.png)
 
 
 </br>
