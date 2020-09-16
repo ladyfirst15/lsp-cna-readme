@@ -451,7 +451,7 @@ metadata:
 ```
 # AWS codebuild에 설정(https://github.com/ladyfirst15/final-cna-coupon/blob/master/buildspec.yml)
   spec:
-    replicas: 3
+    replicas: 2
     minReadySeconds: 10   # 최소 대기 시간 10초
     strategy:
       type: RollingUpdate
@@ -461,25 +461,20 @@ metadata:
 
 ```
 
-- 새버전으로의 배포 시작(V1로 배포)
-![ZeroDownTime  console - pod change status](https://user-images.githubusercontent.com/54210936/93277970-4c2d1c00-f7fe-11ea-87ce-82cdd77e84ac.jpg)
+- 새버전으로의 배포 시작(V1로 배포) kubectl set image deployment/point -n teamc point=271153858532.dkr.ecr.ap-northeast-1.amazonaws.com/admin15-point:v1
 
-- siege를 이용한 부하 적용. Availability가 100% 미만으로 떨어짐. 쿠버네티스가 새로 올려진 서비스를 Ready 상태로 인식하여 서비스 유입을 진행 하였음. Readiness Probe 설정하여 조치 필요.
+- siege를 이용한 부하 적용. Readiness Probe 설정을 통한 ZeroDownTime 구현
 ![무중단_100](https://user-images.githubusercontent.com/69958878/93379258-8b0fb000-f898-11ea-98e4-9aeb99049184.png)
-
-- 새버전 배포 확인(V1 적용)
-![ZeroDownTime  console - pod describe](https://user-images.githubusercontent.com/54210936/93278015-6d8e0800-f7fe-11ea-82d1-dc80b96b601c.jpg)
-
 
 - Readiness Probe 설정을 통한 ZeroDownTime 설정.
 ```
   readinessProbe:
     tcpSocket:
       port: 8080
-      initialDelaySeconds: 180      # 서비스 어플 기동 후 180초 뒤 시작
-      periodSeconds: 120            # 120초 주기로 readinessProbe 실행 
+      initialDelaySeconds: 15      # 서비스 어플 기동 후 15 뒤 시작
+      periodSeconds: 20            # 20초 주기로 readinessProbe 실행 
 ```
-![ZeroDownTime  SEIGE_STATUS_read](https://user-images.githubusercontent.com/54210936/93278989-1473a380-f801-11ea-8140-f7edbc2c9b6f.jpg)
+- 새버전 배포 확인(V1 적용)
 
 
 </br>
