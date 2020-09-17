@@ -410,8 +410,8 @@ server:
  outlierDetection:
   consecutiveErrors: 1          # 5xx 에러가 5번 발생하면
   interval: 1s                  # 1초마다 스캔 하여
-  baseEjectionTime: 10m         # 10분 동안 circuit breaking 처리   
-  maxEjectionPercent: 100       # 100% 로 차단
+  baseEjectionTime: 1m         # 10분 동안 circuit breaking 처리   
+  maxEjectionPercent: 30       # 100% 로 차단
 ```
 
 * 오토스케일(HPA) :
