@@ -517,17 +517,15 @@ livenessProbe:
 </br>
 </br>
 
-
-
 # 첨부
 팀프로젝트 구성을 위해 사용한 계정 정보 및 클러스터 명, Github 주소 등의 내용 공유 
 * AWS 계정 명 : admin14
 ```
 Region : ap-northeast-1
-EFS : EFS-teamc (fs-96929df7)
-EKS : TeamC-final
-ECR : order / delivery / cook / mypage / gateway
-Codebuild : order / delivery / cook / mypage / gateway
+EFS : EFS-teamc (fs-28564909)
+EKS : admin14-cluster
+ECR : order / delivery / cook / mypage / gateway / coupon
+Codebuild : order / delivery / cook / mypage / gateway / coupon
 ```
 * Github :</br>
 ```
@@ -536,4 +534,5 @@ https://github.com/ladyfirst15/lsp-cna-order
 https://github.com/ladyfirst15/lsp-cna-delivery
 https://github.com/ladyfirst15/lsp-cna-cook
 https://github.com/ladyfirst15/lsp-cna-mypage
+https://github.com/ladyfirst15/lsp-cna-coupon
 ```
