@@ -373,7 +373,7 @@ server:
 
  ```
  - mypage에 COUPON 회수(삭제)상태 업데이트 확인
-![mypages_cancel](https://user-images.githubusercontent.com/69958878/93354138-a6b68e80-f877-11ea-87e0-656dc1f5bc9c.png)
+![couponCancel](https://user-images.githubusercontent.com/69958878/93407087-3c7c0900-f8cc-11ea-9542-7119a50467de.png)
 
 </br>
 </br>
