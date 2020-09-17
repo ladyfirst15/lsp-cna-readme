@@ -189,7 +189,7 @@ Saga Patter :
 
  
 ```
-# 고객이 음식 주문 시, Coupon에 신규발행 호출 (REST API)
+# 고객이 음식 주문 시, Coupon에 신규발행 호출 (동기호출)
 @PostPersist
   public void onPostPersist(){
       Ordered ordered = new Ordered();
@@ -214,7 +214,7 @@ Saga Patter :
 
 
 ```
-# Coupon이 신규발행이 완료되면 Order 서비스에 Coupon 완료 정보 전송 (PUB/SUB)
+# Coupon이 신규발행이 완료되면 Order 서비스에 Coupon 완료 정보 전송 (비동기호출 PUB/SUB)
  @PostPersist
   public void onPostPersist(){
       if("COUPON : COUPON SENDED".equals(this.getStatus())){
@@ -228,7 +228,7 @@ Saga Patter :
 ```
 
 ```
-# 주문서비스의 쿠폰상태 설정 (PUB/SUB)
+# 주문서비스의 쿠폰상태 설정 (비동기호출 PUB/SUB)
   @StreamListener(KafkaProcessor.INPUT)
   public void wheneverCouponSended_CouponInfoUpdate(@Payload CouponSended couponSended){
 
@@ -485,7 +485,7 @@ metadata:
 </br>
 
 ## 마이크로서비스 로깅 관리를 위한 PVC 설정
-AWS의 EFS에 파일시스템을 생성(EFS-teamc (fs-28564909))하고 서브넷과 클러스터(TeamC-final)를 연결하고 PVC를 설정해준다. 각 마이크로 서비스의 로그파일이 EFS에 정상적으로 생성되고 기록됨을 확인 함.
+AWS의 EFS에 파일시스템을 생성(EFS-teamc (fs-28564909))하고 서브넷과 클러스터(admin14-cluster)를 연결하고 PVC를 설정해준다. 각 마이크로 서비스의 로그파일이 EFS에 정상적으로 생성되고 기록됨을 확인 함.
 ```
 #AWS의 각 codebuild에 설정(https://github.com/ladyfirst15/lsp-cna-coupon/blob/master/buildspec.yml)
 volumeMounts:  
