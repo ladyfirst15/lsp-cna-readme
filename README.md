@@ -372,7 +372,7 @@ server:
 
 
  ```
- - mypage에 COUPON 회수(삭제)상태 업데이트 확인
+ - mypage에 COUPON 회수(삭제)상태 업데이트 확인                                                                                                                 
 ![couponCancel](https://user-images.githubusercontent.com/69958878/93407087-3c7c0900-f8cc-11ea-9542-7119a50467de.png)
 
 </br>
