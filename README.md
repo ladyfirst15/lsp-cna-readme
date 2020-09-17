@@ -401,7 +401,7 @@ server:
 ## 서킷 브레이킹과 오토스케일
 
 * 서킷 브레이킹 :
-주문이 과도할 경우 CB 를 통하여 장애격리. 500 에러가 5번 발생하면 10분간 CB 처리하여 100% 접속 차단
+주문이 과도할 경우 CB 를 통하여 장애격리. 500 에러가 5번 발생하면 10분간 CB 처리하여 30% 접속 차단
 ```
 # AWS codebuild에 설정(https://github.com/ladyfirst15/lsp-cna-coupon/blob/master/buildspec.yml)
  http:
@@ -411,7 +411,7 @@ server:
   consecutiveErrors: 1          # 5xx 에러가 5번 발생하면
   interval: 1s                  # 1초마다 스캔 하여
   baseEjectionTime: 1m         # 10분 동안 circuit breaking 처리   
-  maxEjectionPercent: 30       # 100% 로 차단
+  maxEjectionPercent: 30       # 30% 로 차단
 ```
 
 * 오토스케일(HPA) :
